@@ -13,6 +13,11 @@
             text-align: center;
         }
 
+        h2 {
+            text-align: center;
+            font-size: 40px;
+        }
+
         .bingo-field {
             width: 150px;
             height: 150px;
@@ -70,19 +75,25 @@
             font-weight: bold;
         }
 
+        #bingo-creator {}
+
+        .invisible {
+            display: none;
+        }
     </style>
     <script>
 
         class Board {
-            constructor(goals, size) {
-                this.size = size;
-                this.goals = getRandomSubarray(goals, size * size);
+            constructor(board_seed) {
+                this.size = board_seed.size;
+                this.goals = getRandomSubarray(board_seed.goals, this.size * this.size);
+                this.title = board_seed.title;
                 this.goals.forEach((g) => {
                     g.count = 0;
                     g.target = g.target || 1;
                     g.increase = (() => { g.count = Math.min(g.count + 1, g.target); this.redraw(); }).bind({ "this": this, "g": g });
                     g.decrease = (() => { g.count = Math.max(g.count - 1, 0); this.redraw() }).bind({ "this": this, "g": g });
-                    g.disable = (() => { g.count = -1; this.redraw()}).bind({ "this": this, "g": g });
+                    g.disable = (() => { g.count = -1; this.redraw() }).bind({ "this": this, "g": g });
                     g.is_met = (() => { return g.count == g.target; }).bind({ "this": this, "g": g });
                     g.is_disabled = (() => { return g.count == -1; }).bind({ "this": this, "g": g });
                     g.is_multitarget = (() => { return g.target > 1; }).bind({ "this": this, "g": g });
@@ -92,7 +103,11 @@
             }
 
             _generate_board() {
+                let title = document.getElementById("bingo-title");
+                title.innerText = this.title;
+
                 let container = document.getElementById("bingo-container");
+                container.innerHTML = "";
                 for (let i = 0; i < this.size; i++) {
                     let row = document.createElement("div");
                     for (let j = 0; j < this.size; j++) {
@@ -100,7 +115,7 @@
                         let field_index = i * this.size + j;
                         field.id = "b" + field_index;
                         field.classList.add("bingo-field");
-                        field.addEventListener('click', (() => { this.goals[field_index].increase() }).bind({this: this, field_index: field_index}), false);
+                        field.addEventListener("click", (() => { this.goals[field_index].increase() }).bind({ this: this, field_index: field_index }), false);
 
                         let field_name = document.createElement("div");
                         field_name.classList.add("goal-name");
@@ -111,12 +126,12 @@
                         let minus_button = document.createElement("div");
                         minus_button.innerText = "–";
                         minus_button.classList.add("minus-button");
-                        minus_button.addEventListener('click', ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({this: this, field_index: field_index}), true);
+                        minus_button.addEventListener("click", ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
 
                         let disable_button = document.createElement("div");
                         disable_button.innerText = "x";
                         disable_button.classList.add("disable-button");
-                        disable_button.addEventListener('click', ((event) => { this.goals[field_index].disable(); event.stopPropagation(); }).bind({this: this, field_index: field_index}), true);
+                        disable_button.addEventListener("click", ((event) => { this.goals[field_index].disable(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
 
                         field.appendChild(field_name);
                         field.appendChild(field_counter);
@@ -161,34 +176,6 @@
             }
         }
 
-        polska_hiszpania = [
-            { name: 'wina tuska' , target: 2},
-            { name: 'PO będzie kraść' },
-            { name: 'sytuacja na rynku świń nadal beznadziejna' },
-            { name: 'smoleńsk' },
-            { name: 'strajk' },
-            { name: 'wątpliwy sondaż' },
-            { name: 'nagrania Donalda Tuska' },
-            { name: 'LGBT' },
-            { name: 'Rekordowy rozwój gospodarki' },
-            { name: '500+, 13 emerytura' },
-            { name: 'dziadek Tuska' },
-            { name: 'uchodźcy' },
-            { name: 'służba zdrowia i ich zachcianki' },
-            { name: 'korupcja w sądach' },
-            { name: 'nic nie wnoszący reportaż ze wsi' },
-            { name: 'radio maryja' },
-            { name: 'unia europejska niszczy polskę' },
-            { name: 'hejterzy z opozycji' },
-            { name: 'zgniły zachód' },
-            { name: 'sukces oglądalności' },
-            { name: 'debata bez udziału gości spoza PiS' },
-            { name: 'disko polo' },
-            { name: 'pominięcie bieżącej afery' },
-            { name: 'ekspert wątpliwej jakości' },
-            { name: 'wirus opanowany' },
-        ];
-
         function getRandomSubarray(arr, size) {
             let shuffled = arr.slice(0);
             let i = arr.length;
@@ -202,15 +189,154 @@
             }
             return shuffled.slice(0, size);
         }
+
+        function encode_board(board) {
+            return encodeURIComponent(JSON.stringify(board));
+        }
+
+        function decode_board(s) {
+            try {
+                return JSON.parse(decodeURIComponent(s));
+            }
+            catch {
+                return null;
+            }
+        }
+
+        function toggle_bingo_creator(event) {
+            let creator = document.getElementById("bingo-creator");
+            creator.classList.toggle("invisible");
+        }
+
+        function load_board_from_creator() {
+            let title = document.getElementById("creator-title-field");
+            let size = document.getElementById("creator-size-field");
+            let goals = document.getElementById("creator-goals-field");
+
+            let board_seed = {
+                title: title.value.trim(),
+                size: parseInt(size.value),
+                goals: goals.value.split("\n").map((line) => {
+                    let re = /(.*)(\(\d+\))/;
+                    let matches = line.trim().match(re);
+                    if (matches && matches.length == 3) {
+                        let name = matches[1].trim();
+                        let target = matches[2];
+                        target = target.substring(1, target.length - 1);
+                        return { name, target };
+                    }
+                    else {
+                        return { name: line.trim() };
+                    }
+
+                })
+            }
+            window.location.hash = encode_board(board_seed);
+            board = new Board(board_seed);
+
+        }
+
+        function fill_creator(board_seed) {
+            let title = document.getElementById("creator-title-field");
+            let size = document.getElementById("creator-size-field");
+            let goals = document.getElementById("creator-goals-field");
+
+            title.value = board_seed.title;
+            size.value = board_seed.size;
+            goals.value = board_seed.goals.map((goal) => {
+                let line = goal.name;
+                let target = goal.target || 1;
+                if (target != 1)
+                    line += " (" + target + ")";
+                return line;
+            }).join("\n");
+        }
+
     </script>
 </head>
 
 <body>
     <h1>bingo</h1>
+    <h2 id="bingo-title"></h2>
     <div id="bingo-container"></div>
+    <button id="toggle-bingo-creator" onclick="toggle_bingo_creator()">Toggle bingo editor</button>
+    <div class="invisible" id="bingo-creator">
+        <form>
+            <label for="creator-title-field">Title</label>
+            <input type="text" id="creator-title-field">
+            <label for="creator-size-field">Size</label>
+            <input type="number" id="creator-size-field">
+            <label for="creator-goals-field">Bingo goals</label>
+            <textarea id="creator-goals-field" placeholder="Each goal in a new line, target number in parentheses at the end"></textarea>
+            <button onclick="load_board_from_creator()">Load board</button>
+        </form>
+    </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            board = new Board(polska_hiszpania, 4);
+        document.addEventListener("DOMContentLoaded", function () {
+            let decoded_board = decode_board(window.location.hash.substr(1));
+
+            let predefined_boards = [
+                {
+                    title: "Wiadomości 2021-07-03", size: 4, goals: [
+                        { name: "wina tuska" },
+                        { name: "PO będzie kraść" },
+                        { name: "sytuacja na rynku świń nadal beznadziejna" },
+                        { name: "smoleńsk" },
+                        { name: "strajk" },
+                        { name: "wątpliwy sondaż" },
+                        { name: "nagrania Donalda Tuska" },
+                        { name: "LGBT" },
+                        { name: "Rekordowy rozwój gospodarki" },
+                        { name: "500+, 13 emerytura" },
+                        { name: "dziadek Tuska" },
+                        { name: "uchodźcy" },
+                        { name: "służba zdrowia i ich zachcianki" },
+                        { name: "korupcja w sądach" },
+                        { name: "nic nie wnoszący reportaż ze wsi" },
+                        { name: "radio maryja" },
+                        { name: "unia europejska niszczy polskę" },
+                        { name: "hejterzy z opozycji" },
+                        { name: "zgniły zachód" },
+                        { name: "sukces oglądalności" },
+                        { name: "debata bez udziału gości spoza PiS" },
+                        { name: "disko polo" },
+                        { name: "pominięcie bieżącej afery" },
+                        { name: "ekspert wątpliwej jakości" },
+                        { name: "wirus opanowany" },
+                    ]
+                },
+                {
+                    title: "EURO 2020: Polska - Hiszpania", size: 4, goals: [
+                        { name: "4 kartki dla Polski", target: 4 },
+                        { name: "karny" },
+                        { name: "kontuzja" },
+                        { name: "remis po pierwszej połowie" },
+                        { name: "rożny przed 15 minutą" },
+                        { name: "9 rożnych", target: 9 },
+                        { name: "zbliżenie na Lewego" },
+                        { name: "Szwecja 60%+ posiadania w pierwszej połowie" },
+                        { name: "Polska przepierdala do zera" },
+                        { name: "gol honorowy dla Polaków" },
+                        { name: "czerwona kartka" },
+                        { name: "samobój" },
+                        { name: "3 kartki dla Szwedów", target: 3 },
+                        { name: "5 celnych strzałów", target: 5 },
+                        { name: "VAR" },
+                        { name: "80 celnych podań dla Polaków w pierwszej połowie" },
+                        { name: "2 poprzeczki", target: 2 },
+                        { name: "4+ doliczone minuty w drugiej połowie" },
+                        { name: "9 outów dla Polaków", target: 9 },
+                        { name: "Szczęsny schodzi" },
+                        { name: "spalony" },
+                        { name: "laga -> Robercik" },
+                        { name: "10 x okazja", target: 10 },
+                    ]
+                }
+            ];
+
+            board_seed = decoded_board || getRandomSubarray(predefined_boards, 1)[0];
+            fill_creator(board_seed);
+            board = new Board(board_seed);
         }, false);
     </script>
 </body>
