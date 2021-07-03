@@ -5,26 +5,12 @@
     <style>
         body {
             background-color: powderblue;
-            text-align: center;
             color: black;
         }
 
         h1 {
             font-size: 80px;
-        }
-
-        h2 {
-            font-size: 65px;
-        }
-
-        table {
-            border: 1px solid black;
-        }
-
-        td {
-            border: 1px solid black;
-            width: 200px;
-            height: 200px;
+            text-align: center;
         }
 
         .bingo-field {
@@ -34,12 +20,38 @@
             margin-right: 5px;
             margin-bottom: 5px;
             padding: 5px;
+            position: relative;
+            text-align: center;
+            background-color: aquamarine;
         }
 
         #bingo-container {
             display: flex;
-            /* flex-wrap: wrap; */
+            cursor: default;
         }
+
+        .minus-button {
+            position: absolute;
+            right: 0px;
+            bottom: 0px;
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+            margin: 2px;
+        }
+
+        .goal-met {
+            background-color: limegreen;
+        }
+
+        .goal-counter {
+            font-style: italic;
+        }
+
+        .goal-name {
+            font-weight: bold;
+        }
+
     </style>
     <script>
 
@@ -50,10 +62,10 @@
                 this.goals.forEach((g) => {
                     g.count = 0;
                     g.target = g.target || 1;
-                    g.increase = (() => { g.count = Math.min(++g.count, g.target); this.redraw(); }).bind({"this": this, "g": g});
-                    g.decrease = (() => { g.count = Math.max(0, --g.count); this.redraw() }).bind({"this": this, "g": g});
-                    g.met = (() => { return g.count == g.target; }).bind({"this": this, "g": g});
-                    g.is_multitarget = (() => { return g.target > 1; }).bind({"this": this, "g": g});
+                    g.increase = (() => { g.count = Math.min(g.count + 1, g.target); this.redraw(); }).bind({ "this": this, "g": g });
+                    g.decrease = (() => { g.count = Math.max(g.count - 1, 0); this.redraw() }).bind({ "this": this, "g": g });
+                    g.met = (() => { return g.count == g.target; }).bind({ "this": this, "g": g });
+                    g.is_multitarget = (() => { return g.target > 1; }).bind({ "this": this, "g": g });
                 });
                 this._generate_board();
             }
@@ -64,10 +76,25 @@
                     let row = document.createElement("div");
                     for (let j = 0; j < this.size; j++) {
                         let field = document.createElement("div");
-                        let field_id = i * this.size + j;
-                        field.id = "b" + field_id;
+                        let field_index = i * this.size + j;
+                        field.id = "b" + field_index;
                         field.classList.add("bingo-field");
-                        field.addEventListener('click', (() => { this.goals[field_id].increase() }).bind(this), false);
+                        field.addEventListener('click', (() => { this.goals[field_index].increase() }).bind({this: this, field_index: field_index}), false);
+
+                        let field_name = document.createElement("div");
+                        field_name.classList.add("goal-name");
+
+                        let field_counter = document.createElement("div");
+                        field_counter.classList.add("goal-counter");
+
+                        let minus_button = document.createElement("div");
+                        minus_button.innerText = "-";
+                        minus_button.classList.add("minus-button");
+                        minus_button.addEventListener('click', ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({this: this, field_index: field_index}), true);
+
+                        field.appendChild(field_name);
+                        field.appendChild(field_counter);
+                        field.appendChild(minus_button);
                         row.appendChild(field);
                     }
                     container.appendChild(row);
@@ -75,48 +102,56 @@
                 this.redraw();
             }
 
-            redraw()
-            {
+            redraw() {
                 this.goals.forEach((goal, i) => {
                     let field = document.getElementById("b" + i);
-                    let label = goal.name;
+                    let goal_name_field = field.getElementsByClassName("goal-name")[0];
+                    let goal_counter_field = field.getElementsByClassName("goal-counter")[0];
+                    let counter_text = "";
 
                     if (goal.is_multitarget()) {
-                        label += " (" + goal.count + "/" + goal.target + ")";
+                        counter_text += + goal.count + "/" + goal.target;
                     }
 
                     if (goal.met()) {
-                        field.style.backgroundColor = "green";
+                        field.classList.add("goal-met");
                     }
-                    field.innerText = label;
+                    else
+                    {
+                        field.classList.remove("goal-met");
+                    }
+                    goal_name_field.innerText = goal.name;
+                    goal_counter_field.innerText = counter_text;
                 })
             }
         }
 
         polska_hiszpania = [
-            { name: '4 kartki dla Polski', target: 4 },
-            { name: 'karny' },
-            { name: 'kontuzja' },
-            { name: 'remis po pierwszej połowie' },
-            { name: 'rożny przed 15 minutą' },
-            { name: '9 rożnych', target: 9 },
-            { name: 'zbliżenie na Lewego' },
-            { name: 'Szwecja 60%+ posiadania w pierwszej połowie' },
-            { name: 'Polska przepierdala do zera' },
-            { name: 'gol honorowy dla Polaków' },
-            { name: 'czerwona kartka' },
-            { name: 'samobój' },
-            { name: '3 kartki dla Szwedów', target: 3 },
-            { name: '5 celnych strzałów', target: 5 },
-            { name: 'VAR' },
-            { name: '80 celnych podań dla Polaków w pierwszej połowie' },
-            { name: '2 poprzeczki', target: 2 },
-            { name: '4+ doliczone minuty w drugiej połowie' },
-            { name: '9 outów dla Polaków', target: 9 },
-            { name: 'Szczęsny schodzi' },
-            { name: 'spalony' },
-            { name: 'laga -> Robercik' },
-            { name: '10 x "okazja"' }
+            { name: 'wina tuska' , target: 10},
+            { name: 'PO będzie kraść' },
+            { name: 'sytuacja na rynku świń nadal beznadziejna' },
+            { name: 'smoleńsk' },
+            { name: 'strajk' },
+            { name: 'wątpliwy sondaż' },
+            { name: 'nagrania Donalda Tuska' },
+            { name: 'LGBT' },
+            { name: 'Rekordowy rozwój gospodarki' },
+            { name: '500+, 13 emerytura' },
+            { name: 'dziadek Tuska' },
+            { name: 'uchodźcy' },
+            { name: 'służba zdrowia i ich zachcianki' },
+            { name: 'korupcja w sądach' },
+            { name: 'nic nie wnoszący reportaż ze wsi' },
+            { name: 'radio maryja' },
+            { name: 'unia europejska niszczy polskę' },
+            { name: 'hejterzy z opozycji' },
+            { name: 'zgniły zachód' },
+            { name: 'sukces oglądalności' },
+            { name: 'debata bez udziału gości spoza PiS' },
+            { name: 'disko polo' },
+            { name: 'pominięcie bieżącej afery' },
+            { name: 'ekspert wątpliwej jakości' },
+            { name: 'wirus opanowany' },
         ];
 
         function getRandomSubarray(arr, size) {
