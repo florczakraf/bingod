@@ -22,7 +22,7 @@
             padding: 5px;
             position: relative;
             text-align: center;
-            background-color: aquamarine;
+            background-color: beige;
         }
 
         #bingo-container {
@@ -40,8 +40,26 @@
             margin: 2px;
         }
 
+        .disable-button {
+            position: absolute;
+            right: 24px;
+            bottom: 0px;
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+            margin: 2px;
+        }
+
         .goal-met {
-            background-color: limegreen;
+            background-color: yellowgreen;
+        }
+
+        .goal-started {
+            background-color: lightgreen;
+        }
+
+        .goal-disabled {
+            background-color: dimgrey;
         }
 
         .goal-counter {
@@ -64,8 +82,11 @@
                     g.target = g.target || 1;
                     g.increase = (() => { g.count = Math.min(g.count + 1, g.target); this.redraw(); }).bind({ "this": this, "g": g });
                     g.decrease = (() => { g.count = Math.max(g.count - 1, 0); this.redraw() }).bind({ "this": this, "g": g });
-                    g.met = (() => { return g.count == g.target; }).bind({ "this": this, "g": g });
+                    g.disable = (() => { g.count = -1; this.redraw()}).bind({ "this": this, "g": g });
+                    g.is_met = (() => { return g.count == g.target; }).bind({ "this": this, "g": g });
+                    g.is_disabled = (() => { return g.count == -1; }).bind({ "this": this, "g": g });
                     g.is_multitarget = (() => { return g.target > 1; }).bind({ "this": this, "g": g });
+                    g.is_started = (() => { return g.count > 0; }).bind({ "this": this, "g": g });
                 });
                 this._generate_board();
             }
@@ -88,13 +109,19 @@
                         field_counter.classList.add("goal-counter");
 
                         let minus_button = document.createElement("div");
-                        minus_button.innerText = "-";
+                        minus_button.innerText = "–";
                         minus_button.classList.add("minus-button");
                         minus_button.addEventListener('click', ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({this: this, field_index: field_index}), true);
+
+                        let disable_button = document.createElement("div");
+                        disable_button.innerText = "x";
+                        disable_button.classList.add("disable-button");
+                        disable_button.addEventListener('click', ((event) => { this.goals[field_index].disable(); event.stopPropagation(); }).bind({this: this, field_index: field_index}), true);
 
                         field.appendChild(field_name);
                         field.appendChild(field_counter);
                         field.appendChild(minus_button);
+                        field.appendChild(disable_button);
                         row.appendChild(field);
                     }
                     container.appendChild(row);
@@ -109,17 +136,25 @@
                     let goal_counter_field = field.getElementsByClassName("goal-counter")[0];
                     let counter_text = "";
 
-                    if (goal.is_multitarget()) {
+                    if (goal.is_multitarget() && !goal.is_disabled()) {
                         counter_text += + goal.count + "/" + goal.target;
                     }
 
-                    if (goal.met()) {
+
+                    field.classList.remove("goal-met");
+                    field.classList.remove("goal-disabled");
+                    field.classList.remove("goal-started");
+
+                    if (goal.is_met()) {
                         field.classList.add("goal-met");
                     }
-                    else
-                    {
-                        field.classList.remove("goal-met");
+                    else if (goal.is_disabled()) {
+                        field.classList.add("goal-disabled");
                     }
+                    else if (goal.is_started()) {
+                        field.classList.add("goal-started");
+                    }
+
                     goal_name_field.innerText = goal.name;
                     goal_counter_field.innerText = counter_text;
                 })
@@ -127,7 +162,7 @@
         }
 
         polska_hiszpania = [
-            { name: 'wina tuska' , target: 10},
+            { name: 'wina tuska' , target: 2},
             { name: 'PO będzie kraść' },
             { name: 'sytuacja na rynku świń nadal beznadziejna' },
             { name: 'smoleńsk' },
