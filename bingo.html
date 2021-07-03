@@ -6,7 +6,7 @@
         body {
             background-color: powderblue;
             text-align: center;
-            color: white;
+            color: black;
         }
 
         h1 {
@@ -26,36 +26,104 @@
             width: 200px;
             height: 200px;
         }
+
+        .bingo-field {
+            width: 150px;
+            height: 150px;
+            border: 1px solid black;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            padding: 5px;
+        }
+
+        #bingo-container {
+            display: flex;
+            /* flex-wrap: wrap; */
+        }
     </style>
     <script>
-        goals = [
-            ['4 kartki dla Polski', 4],
-            ['karny', 1],
-            ['kontuzja', 1],
-            ['remis po pierwszej połowie', 1],
-            ['rożny przed 15 minutą', 1],
-            ['9 rożnych', 9],
-            ['zbliżenie na Lewego', 1],
-            ['Szwecja 60%+ posiadania w pierwszej połowie', 1],
-            ['Polska przepierdala do zera', 1],
-            ['gol honorowy dla Polaków', 1],
-            ['czerwona kartka', 1],
-            ['samobój', 1],
-            ['3 kartki dla Szwedów', 3],
-            ['5 celnych strzałów', 5],
-            ['VAR', 1],
-            ['80 celnych podań dla Polaków w pierwszej połowie', 1],
-            ['2 poprzeczki', 2],
-            ['4+ doliczone minuty w drugiej połowie', 1],
-            ['9 outów dla Polaków', 9],
-            ['Szczęsny schodzi', 1],
-            ['spalony', 1],
-            ['laga -> Robercik', 1],
-            ['10 x "okazja"', 10]
+
+        class Board {
+            constructor(goals, size) {
+                this.size = size;
+                this.goals = getRandomSubarray(goals, size * size);
+                this.goals.forEach((g) => {
+                    g.count = 0;
+                    g.target = g.target || 1;
+                    g.increase = (() => { g.count = Math.min(++g.count, g.target); this.redraw(); }).bind({"this": this, "g": g});
+                    g.decrease = (() => { g.count = Math.max(0, --g.count); this.redraw() }).bind({"this": this, "g": g});
+                    g.met = (() => { return g.count == g.target; }).bind({"this": this, "g": g});
+                    g.is_multitarget = (() => { return g.target > 1; }).bind({"this": this, "g": g});
+                });
+                this._generate_board();
+            }
+
+            _generate_board() {
+                let container = document.getElementById("bingo-container");
+                for (let i = 0; i < this.size; i++) {
+                    let row = document.createElement("div");
+                    for (let j = 0; j < this.size; j++) {
+                        let field = document.createElement("div");
+                        let field_id = i * this.size + j;
+                        field.id = "b" + field_id;
+                        field.classList.add("bingo-field");
+                        field.addEventListener('click', (() => { this.goals[field_id].increase() }).bind(this), false);
+                        row.appendChild(field);
+                    }
+                    container.appendChild(row);
+                }
+                this.redraw();
+            }
+
+            redraw()
+            {
+                this.goals.forEach((goal, i) => {
+                    let field = document.getElementById("b" + i);
+                    let label = goal.name;
+
+                    if (goal.is_multitarget()) {
+                        label += " (" + goal.count + "/" + goal.target + ")";
+                    }
+
+                    if (goal.met()) {
+                        field.style.backgroundColor = "green";
+                    }
+                    field.innerText = label;
+                })
+            }
+        }
+
+        polska_hiszpania = [
+            { name: '4 kartki dla Polski', target: 4 },
+            { name: 'karny' },
+            { name: 'kontuzja' },
+            { name: 'remis po pierwszej połowie' },
+            { name: 'rożny przed 15 minutą' },
+            { name: '9 rożnych', target: 9 },
+            { name: 'zbliżenie na Lewego' },
+            { name: 'Szwecja 60%+ posiadania w pierwszej połowie' },
+            { name: 'Polska przepierdala do zera' },
+            { name: 'gol honorowy dla Polaków' },
+            { name: 'czerwona kartka' },
+            { name: 'samobój' },
+            { name: '3 kartki dla Szwedów', target: 3 },
+            { name: '5 celnych strzałów', target: 5 },
+            { name: 'VAR' },
+            { name: '80 celnych podań dla Polaków w pierwszej połowie' },
+            { name: '2 poprzeczki', target: 2 },
+            { name: '4+ doliczone minuty w drugiej połowie' },
+            { name: '9 outów dla Polaków', target: 9 },
+            { name: 'Szczęsny schodzi' },
+            { name: 'spalony' },
+            { name: 'laga -> Robercik' },
+            { name: '10 x "okazja"' }
         ];
 
         function getRandomSubarray(arr, size) {
-            var shuffled = arr.slice(0), i = arr.length, temp, index;
+            let shuffled = arr.slice(0);
+            let i = arr.length;
+            let temp;
+            let index;
             while (i--) {
                 index = Math.floor((i + 1) * Math.random());
                 temp = shuffled[index];
@@ -64,98 +132,17 @@
             }
             return shuffled.slice(0, size);
         }
-
-        chosen = getRandomSubarray(goals, 16);
-        counters = [];
-
-        function set_field(i) {
-            document.getElementById("b" + i).innerHTML = chosen[i][0] + "(" + counters[i] + "/" + chosen[i][1] + ")";
-            if (counters[i] >= chosen[i][1]) {
-                document.getElementById("b" + i).style.backgroundColor = "green";
-            }
-        }
-
-        function increment(i) {
-            counters[i]++;
-            set_field(i);
-        }
-
     </script>
 </head>
 
 <body>
     <h1>bingo</h1>
-    <h2>
-        <table>
-            <tr>
-                <td>
-                    <button onclick="increment(0)" id="b0">
-                </td>
-                <td>
-                    <button onclick="increment(1)" id="b1">
-                </td>
-                <td>
-                    <button onclick="increment(2)" id="b2">
-                </td>
-                <td>
-                    <button onclick="increment(3)" id="b3">
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <button onclick="increment(4)" id="b4">
-                </td>
-                <td>
-                    <button onclick="increment(5)" id="b5">
-                </td>
-                <td>
-                    <button onclick="increment(6)" id="b6">
-                </td>
-                <td>
-                    <button onclick="increment(7)" id="b7">
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <button onclick="increment(8)" id="b8">
-                </td>
-                <td>
-                    <button onclick="increment(9)" id="b9">
-                </td>
-                <td>
-                    <button onclick="increment(10)" id="b10">
-                </td>
-                <td>
-                    <button onclick="increment(11)" id="b11">
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <button onclick="increment(12)" id="b12">
-                </td>
-                <td>
-                    <button onclick="increment(13)" id="b13">
-                </td>
-                <td>
-                    <button onclick="increment(14)" id="b14">
-                </td>
-                <td>
-                    <button onclick="increment(15)" id="b15">
-                </td>
-            </tr>
-        </table>
-
-    </h2>
-
+    <div id="bingo-container"></div>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            for (i = 0; i < 16; i++) {
-                counters.push(0);
-                set_field(i);
-            }
+            board = new Board(polska_hiszpania, 4);
         }, false);
     </script>
-
 </body>
 
 </html>
