@@ -252,6 +252,32 @@
             }).join("\n");
         }
 
+        function set_predefined_boards(predefined_boards) {
+            let ul = document.getElementById("predefined-boards");
+
+            predefined_boards.forEach((board_seed) => {
+                let li = document.createElement("li");
+                let a = document.createElement("a");
+
+                a.href = window.location.origin + window.location.pathname + window.location.search + "#" + encode_board(board_seed);
+                a.innerText = board_seed.title;
+                a.addEventListener("click", ((event) => { load_board(board_seed) }).bind({ board_seed }), true);
+
+                li.appendChild(a);
+                ul.appendChild(li);
+            })
+        }
+
+        function load_board(board_seed) {
+            if (!board_seed) {
+                let decoded_board = decode_board(window.location.hash.substr(1));
+                board_seed = decoded_board || predefined_boards[0];
+                window.location.hash = encode_board(board_seed);
+            }
+            fill_creator(board_seed);
+            board = new Board(board_seed);
+        }
+
     </script>
 </head>
 
@@ -271,11 +297,13 @@
             <button onclick="load_board_from_creator()">Load board</button>
         </form>
     </div>
+    <div>
+        Previous bingos:
+        <ul id="predefined-boards"></ul>
+    </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            let decoded_board = decode_board(window.location.hash.substr(1));
-
-            let predefined_boards = [
+            predefined_boards = [
                 {
                     title: "Wiadomości 2021-07-03", size: 4, goals: [
                         { name: "wina tuska" },
@@ -333,10 +361,9 @@
                     ]
                 }
             ];
+            set_predefined_boards(predefined_boards);
 
-            board_seed = decoded_board || getRandomSubarray(predefined_boards, 1)[0];
-            fill_creator(board_seed);
-            board = new Board(board_seed);
+            var board = load_board();
         }, false);
     </script>
 </body>
