@@ -80,6 +80,7 @@
         .invisible {
             display: none;
         }
+
     </style>
     <script>
 
@@ -172,6 +173,7 @@
 
                     goal_name_field.innerText = goal.name;
                     goal_counter_field.innerText = counter_text;
+                    field.title = goal.hint;
                 })
             }
         }
@@ -219,23 +221,32 @@
                 title: title.value.trim(),
                 size: parseInt(size.value),
                 goals: goals.value.split("\n").map((line) => {
-                    let re = /(.*)(\(\d+\))/;
-                    let matches = line.trim().match(re);
-                    if (matches && matches.length == 3) {
-                        let name = matches[1].trim();
-                        let target = matches[2];
-                        target = target.substring(1, target.length - 1);
-                        return { name, target };
-                    }
-                    else {
-                        return { name: line.trim() };
+                    line = line.trim();
+                    const re_name = /^([^\[\(]+)/;
+                    const re_hint = /\[(.+)\]/;
+                    const re_target = /\((\d+)\)/;
+
+                    const name_match = line.match(re_name);
+                    const target_match = line.match(re_target);
+                    const hint_match = line.match(re_hint);
+
+                    const name = name_match[0].trim()
+
+                    let target = 1;
+                    if (target_match) {
+                        target = target_match[1];
                     }
 
+                    let hint = "";
+                    if (hint_match) {
+                        hint = hint_match[1]
+                    }
+
+                    return { name, hint, target };
                 })
             }
             window.location.hash = encode_board(board_seed);
             board = new Board(board_seed);
-
         }
 
         function fill_creator(board_seed) {
@@ -248,6 +259,10 @@
             goals.value = board_seed.goals.map((goal) => {
                 let line = goal.name;
                 let target = goal.target || 1;
+                let hint = goal.hint || "";
+
+                if (hint)
+                    line += " [" + hint + "]";
                 if (target != 1)
                     line += " (" + target + ")";
                 return line;
@@ -296,7 +311,7 @@
             <input type="number" id="creator-size-field">
             <label for="creator-goals-field">Bingo goals</label>
             <textarea id="creator-goals-field"
-                placeholder="Each goal in a new line, target number in parentheses at the end"></textarea>
+                placeholder="Each goal in a new line, optional hint in [...], optional target number in (...) at the end. Examples:&#10;My custom goal&#10;My custom goal with a hint on hover [this will be displayed on hover]&#10;My custom goal with just a counter (42)&#10;My custom goal with both features [this will be displayed on hover] (6)"></textarea>
             <button onclick="load_board_from_creator()">Load board</button>
         </form>
     </div>
