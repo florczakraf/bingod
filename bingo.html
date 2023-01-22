@@ -30,29 +30,29 @@
             background-color: beige;
         }
 
-        #bingo-container {
+        .bingo-container {
             display: flex;
             cursor: default;
         }
 
-        .minus-button {
+        .button {
             position: absolute;
-            right: 0px;
-            bottom: 0px;
-            width: 20px;
-            height: 20px;
             border: 1px solid black;
             margin: 2px;
         }
 
+        .minus-button {
+            right: 0px;
+            bottom: 0px;
+            width: 20px;
+            height: 20px;
+        }
+
         .disable-button {
-            position: absolute;
             right: 24px;
             bottom: 0px;
             width: 20px;
             height: 20px;
-            border: 1px solid black;
-            margin: 2px;
         }
 
         .goal-met {
@@ -81,14 +81,60 @@
             display: none;
         }
 
+        @media print {
+            @page {
+                size: A4;
+            }
+
+            body {
+                margin: auto auto;
+                /* margin: 0.5cm; */
+            }
+            .button {
+                visibility: hidden;
+            }
+
+            #previous-bingos {
+                display: none;
+            }
+
+            #toggle-bingo-creator {
+                display: none;
+            }
+
+            #bingo-creator {
+                display: none;
+            }
+
+            .pagebreak {
+                clear: both;
+                page-break-after: always;
+            }
+        }
+
     </style>
     <script>
 
+        function removeIdRecursively(node) {
+            node.id = "";
+            node = node.firstChild;
+            while (node) {
+                removeIdRecursively(node);
+                node = node.nextSibling;
+            }
+        }
+
         class Board {
             constructor(board_seed) {
+                this.board_seed = board_seed;
                 this.size = board_seed.size;
-                this.goals = getRandomSubarray(board_seed.goals, this.size * this.size);
                 this.title = board_seed.title;
+                this._initialize_goals();
+                this._generate_board();
+            }
+
+            _initialize_goals() {
+                this.goals = getRandomSubarray(this.board_seed.goals, this.size * this.size);
                 this.goals.forEach((g) => {
                     g.count = 0;
                     g.target = g.target || 1;
@@ -100,49 +146,58 @@
                     g.is_multitarget = (() => { return g.target > 1; }).bind({ "this": this, "g": g });
                     g.is_started = (() => { return g.count > 0; }).bind({ "this": this, "g": g });
                 });
-                this._generate_board();
             }
 
-            _generate_board() {
-                let title = document.getElementById("bingo-title");
-                title.innerText = this.title;
-
-                let container = document.getElementById("bingo-container");
-                container.innerHTML = "";
-                for (let i = 0; i < this.size; i++) {
-                    let row = document.createElement("div");
-                    for (let j = 0; j < this.size; j++) {
-                        let field = document.createElement("div");
-                        let field_index = i * this.size + j;
-                        field.id = "b" + field_index;
-                        field.classList.add("bingo-field");
-                        field.addEventListener("click", (() => { this.goals[field_index].increase() }).bind({ this: this, field_index: field_index }), false);
-
-                        let field_name = document.createElement("div");
-                        field_name.classList.add("goal-name");
-
-                        let field_counter = document.createElement("div");
-                        field_counter.classList.add("goal-counter");
-
-                        let minus_button = document.createElement("div");
-                        minus_button.innerText = "–";
-                        minus_button.classList.add("minus-button");
-                        minus_button.addEventListener("click", ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
-
-                        let disable_button = document.createElement("div");
-                        disable_button.innerText = "x";
-                        disable_button.classList.add("disable-button");
-                        disable_button.addEventListener("click", ((event) => { this.goals[field_index].disable(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
-
-                        field.appendChild(field_name);
-                        field.appendChild(field_counter);
-                        field.appendChild(minus_button);
-                        field.appendChild(disable_button);
-                        row.appendChild(field);
+            _generate_board(n=100) {
+                for (let board_index = 0; board_index < n; board_index++) {
+                    if (board_index > 0) {
+                        this._initialize_goals();
+                        let rootContainer = document.getElementById("root-container");
+                        let rootClone = rootContainer.cloneNode(true);
+                        removeIdRecursively(rootClone);
+                        rootContainer.parentNode.appendChild(rootClone);
                     }
-                    container.appendChild(row);
+
+                    let title = document.getElementById("bingo-title");
+                    title.innerText = this.title;
+
+                    let container = document.getElementsByClassName("bingo-container")[0];
+                    container.innerHTML = "";
+                    for (let i = 0; i < this.size; i++) {
+                        let row = document.createElement("div");
+                        for (let j = 0; j < this.size; j++) {
+                            let field = document.createElement("div");
+                            let field_index = i * this.size + j;
+                            field.id = "b" + field_index;
+                            field.classList.add("bingo-field");
+                            field.addEventListener("click", (() => { this.goals[field_index].increase() }).bind({ this: this, field_index: field_index }), false);
+
+                            let field_name = document.createElement("div");
+                            field_name.classList.add("goal-name");
+
+                            let field_counter = document.createElement("div");
+                            field_counter.classList.add("goal-counter");
+
+                            let minus_button = document.createElement("div");
+                            minus_button.innerText = "–";
+                            minus_button.classList.add("button", "minus-button");
+                            minus_button.addEventListener("click", ((event) => { this.goals[field_index].decrease(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
+
+                            let disable_button = document.createElement("div");
+                            disable_button.innerText = "x";
+                            disable_button.classList.add("button", "disable-button");
+                            disable_button.addEventListener("click", ((event) => { this.goals[field_index].disable(); event.stopPropagation(); }).bind({ this: this, field_index: field_index }), true);
+
+                            field.appendChild(field_name);
+                            field.appendChild(field_counter);
+                            field.appendChild(minus_button);
+                            field.appendChild(disable_button);
+                            row.appendChild(field);
+                        }
+                        container.appendChild(row);
+                    }
+                    this.redraw();
                 }
-                this.redraw();
             }
 
             redraw() {
@@ -299,9 +354,12 @@
 </head>
 
 <body>
+    <div id="root-container">
     <h1>bingo</h1>
     <h2 id="bingo-title"></h2>
-    <div id="bingo-container"></div>
+    <div class="bingo-container"></div>
+    <div class="pagebreak"></div>
+    </div>
     <button id="toggle-bingo-creator" onclick="toggle_bingo_creator()">Toggle bingo editor</button>
     <div class="invisible" id="bingo-creator">
         <form>
@@ -315,7 +373,7 @@
             <button onclick="load_board_from_creator()">Load board</button>
         </form>
     </div>
-    <div>
+    <div id="previous-bingos">
         Previous bingos:
         <ul id="predefined-boards"></ul>
     </div>
